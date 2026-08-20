@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+usage() {
+    set +x
+    echo "Usage: ./bin/db (display|testdata|RESET)" >&2
+}
+
+[[ "$#" -eq 1 ]] || {
+    usage
+    exit 1;
+}
+
+set -x
+
+case "$1" in
+    "display")
+        docker exec -i local-postgres psql -U tj -d vidtube -c "SELECT * FROM users LIMIT 2;" -c "SELECT * FROM videos LIMIT 2;"
+        ;;
+    "testdata")
+        docker exec -i local-postgres psql -U tj -d vidtube < migrations/002_testdata.sql
+        ;;
+    "RESET")
+        set +x
+        read -rp "Are you sure you want to reset the database? [y/N]: " response
+        set -x
+
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            docker compose down -v db
+        else
+            echo "Reset aborted."
+            exit 0
+        fi
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
+
