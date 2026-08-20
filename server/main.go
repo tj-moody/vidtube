@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	err := db.InitDB()
 	if err != nil {
 		slog.Error("Failed to open DB: ", err)
@@ -18,6 +20,10 @@ func main() {
 	}
 	defer db.Instance.Close()
 
+	if err := storage.Init(ctx, "vidtube-videos-1"); err != nil {
+		slog.Error("failed to init s3 client", "error", err)
+		os.Exit(1)
+	}
 
 	http.HandleFunc("/api/v1/videos", handleWithCors(v1.VideosHandler))
 
