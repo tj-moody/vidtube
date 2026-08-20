@@ -1,0 +1,15 @@
+.header {
+    background: #202020;
+    font-size: 3rem;
+    margin: 0px;
+    padding: 3rem 4rem;
+    display: block
+}
+
+.link {
+    font-weight: bold;
+    color: white;
+    text-align: left;
+    text-decoration: none;
+    font-family: sans-serif;
+}
