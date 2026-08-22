@@ -63,13 +63,14 @@ func (d *Database) GetVideos(page_size int, page_number int) ([]Video, error) {
 
 	offset := (page_number - 1) * page_size
 	rows, err := d.conn.Query(
-		`SELECT id, public_id, title, author_id, views
-		FROM videos ORDER BY id DESC
+		`SELECT videos.id, videos.public_id, videos.title, users.name, videos.views
+		FROM videos JOIN users ON videos.author_id = users.id
+		ORDER BY videos.id DESC
 		LIMIT $1 OFFSET $2`,
 		page_size, offset,
 	)
 	if err != nil {
-		slog.Error("failed to fetch videos:", err)
+		slog.Error("failed to fetch videos", "error", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -114,7 +115,7 @@ func (d *Database) CreateUser(name string, email string, password string) (int64
 	var exists bool
 	err := d.conn.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", email).Scan(&exists)
 	if err != nil {
-		slog.Error("Error checking email:", err)
+		slog.Error("error checking email", "error", err)
 		return 0, err
 	}
 
@@ -122,25 +123,20 @@ func (d *Database) CreateUser(name string, email string, password string) (int64
 		return 0, errors.New("email already registered")
 	}
 
-	res, err := d.conn.Exec(
-		"INSERT INTO users (name, email, password) VALUES ($1, $2, $3)",
+	res := d.conn.QueryRow(
+		"INSERT INTO users (name, email, hash) VALUES ($1, $2, $3) RETURNING id",
 		name,
 		email,
 		password,
 	)
 
-	if err != nil {
-		slog.Error("Error creating user:", err)
+	var id int64
+	if err := res.Scan(&id); err != nil {
+		slog.Error("failed to insert user", "error", err)
 		return 0, err
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		slog.Error("Error inserting user:", err)
-		return 0, err
-	}
-
-	slog.Info("Successfully added user:", name, email, password)
+	slog.Info("Successfully added user:", name, email)
 	return id, nil
 }
 

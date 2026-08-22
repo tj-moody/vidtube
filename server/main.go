@@ -15,7 +15,7 @@ func main() {
 
 	err := db.InitDB()
 	if err != nil {
-		slog.Error("Failed to open DB: ", err)
+		slog.Error("failed to open db.", "err", err)
 		os.Exit(1)
 	}
 	defer db.Instance.Close()
@@ -31,7 +31,7 @@ func main() {
 	slog.Info("Server running at http://0.0.0.0:" + port)
 	err = http.ListenAndServe("0.0.0.0:"+port, nil)
 	if err != nil {
-		slog.Error("Server failed: %s", err)
+		slog.Error("server failed.", "err", err)
 		os.Exit(1)
 	}
 }

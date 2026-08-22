@@ -52,7 +52,7 @@ func videosPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := db.Instance.UploadVideo(videoID, req.Title, req.AuthorID, s3Key)
 	if err != nil {
-		slog.Error("failed to add video:", err)
+		slog.Error("failed to add video", "error", err)
 		http.Error(w, "failed to add video: ", http.StatusInternalServerError)
 		return
 	}
