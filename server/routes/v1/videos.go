@@ -1,15 +1,15 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"time"
+	uuid "github.com/google/uuid"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 	"vidtube/db"
-	"vidtube/storage"
-	uuid "github.com/google/uuid"
 )
 
 type VideoUploadRequest struct {
@@ -18,7 +18,30 @@ type VideoUploadRequest struct {
 	AuthorID int64  `json:"authorID"`
 }
 
-func videosPostHandler(w http.ResponseWriter, r *http.Request) {
+type VideoStore interface {
+	GetVideos(pageSize, pageNumber int) ([]db.Video, error)
+	UploadVideo(publicID uuid.UUID, title string, authorID int64, s3Key string) (int64, error)
+}
+
+type Presigner interface {
+	GeneratePresignedUploadURL(ctx context.Context, key string, expires time.Duration) (string, error)
+}
+
+// /api/v1/videos
+func NewVideosHandler(store VideoStore, presigner Presigner) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			videosGetHandler(store, w, r)
+		case http.MethodPost:
+			videosPostHandler(store, presigner, w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func videosPostHandler(store VideoStore, presigner Presigner, w http.ResponseWriter, r *http.Request) {
 	var req VideoUploadRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -43,14 +66,14 @@ func videosPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s3Key := fmt.Sprintf("videos/%s/original.mp4", videoID)
-	uploadURL, err := storage.Instance.GeneratePresignedUploadURL(r.Context(), s3Key, 15*time.Minute)
+	uploadURL, err := presigner.GeneratePresignedUploadURL(r.Context(), s3Key, 15*time.Minute)
 	if err != nil {
 		slog.Error("failed to generate presigned url", "error", err)
 		http.Error(w, "Failed to generate upload url", http.StatusInternalServerError)
 		return
 	}
 
-	id, err := db.Instance.UploadVideo(videoID, req.Title, req.AuthorID, s3Key)
+	id, err := store.UploadVideo(videoID, req.Title, req.AuthorID, s3Key)
 	if err != nil {
 		slog.Error("failed to add video", "error", err)
 		http.Error(w, "failed to add video: ", http.StatusInternalServerError)
@@ -60,13 +83,13 @@ func videosPostHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Video added successfully",
-		"id":      fmt.Sprint(id),
+		"message":   "Video added successfully",
+		"id":        fmt.Sprint(id),
 		"uploadURL": uploadURL,
 	})
 }
 
-func videosGetHandler(w http.ResponseWriter, r *http.Request) {
+func videosGetHandler(store VideoStore, w http.ResponseWriter, r *http.Request) {
 	countStr := r.URL.Query().Get("count")
 	pageStr := r.URL.Query().Get("page")
 
@@ -86,7 +109,7 @@ func videosGetHandler(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 
-	videos, err := db.Instance.GetVideos(count, page)
+	videos, err := store.GetVideos(count, page)
 	if err != nil {
 		http.Error(w, "Internal database error", http.StatusInternalServerError)
 		return
@@ -95,17 +118,4 @@ func videosGetHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(videos)
-}
-
-// /api/v1/vidtube/videos"
-func VideosHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		videosGetHandler(w, r)
-	case http.MethodPost:
-		videosPostHandler(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 }

@@ -1,31 +1,39 @@
 package main
 
 import (
-	"os"
-	"log/slog"
 	"context"
+	"log/slog"
 	"net/http"
+	"os"
+
 	"vidtube/db"
-	"vidtube/storage"
 	v1 "vidtube/routes/v1"
+	"vidtube/storage"
 )
+
+const defaultS3Endpoint = "http://localhost:4566" // LocalStack
 
 func main() {
 	ctx := context.Background()
 
-	err := db.InitDB()
+	database, err := db.New(os.Getenv("DB_URL"))
 	if err != nil {
-		slog.Error("failed to open db.", "err", err)
+		slog.Error("failed to open db", "error", err)
 		os.Exit(1)
 	}
-	defer db.Instance.Close()
+	defer database.Close()
 
-	if err := storage.Init(ctx, "vidtube-videos-1"); err != nil {
+	endpoint := os.Getenv("S3_ENDPOINT")
+	if endpoint == "" {
+		endpoint = defaultS3Endpoint
+	}
+	store, err := storage.New(ctx, "vidtube-videos-1", endpoint)
+	if err != nil {
 		slog.Error("failed to init s3 client", "error", err)
 		os.Exit(1)
 	}
 
-	http.HandleFunc("/api/v1/videos", handleWithCors(v1.VideosHandler))
+	http.HandleFunc("/api/v1/videos", handleWithCors(v1.NewVideosHandler(database, store)))
 
 	port := getPort()
 	slog.Info("Server running at http://0.0.0.0:" + port)

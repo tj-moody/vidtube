@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,26 +30,21 @@ type User struct {
 	Created time.Time `json:"created"`
 }
 
-var Instance *Database
-
-func InitDB() error {
-	dbURL := os.Getenv("DB_URL")
+func New(dbURL string) (*Database, error) {
 	if dbURL == "" {
-		return errors.New("DB_URL not set in environment")
+		return nil, errors.New("DB_URL not set in environment")
 	}
 	conn, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = conn.Ping()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	Instance = &Database{conn}
-
-	return nil
+	return &Database{conn}, nil
 }
 
 // REQUIRES:

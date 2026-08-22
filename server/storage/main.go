@@ -15,9 +15,7 @@ type S3Client struct {
 	bucket string
 }
 
-var Instance *S3Client
-
-func Init(ctx context.Context, bucket string) error {
+func New(ctx context.Context, bucket, endpoint string) (*S3Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-east-1"),
 		// dummy values - not needed for localstack
@@ -26,17 +24,15 @@ func Init(ctx context.Context, bucket string) error {
 		)),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String("http://localhost:4566")
+		o.BaseEndpoint = aws.String(endpoint)
 		o.UsePathStyle = true // LocalStack needs path-style, not virtual-hosted-style
 	})
 
-	Instance = &S3Client{client: client, bucket: bucket}
-
-	return nil
+	return &S3Client{client: client, bucket: bucket}, nil
 }
 
 func (s *S3Client) GeneratePresignedUploadURL(ctx context.Context, key string, expires time.Duration) (string, error) {
