@@ -2,7 +2,7 @@
 
 ## Layout
 
-- `client/` — React 19 + Vite 7 + TypeScript SPA (`npm --prefix client run dev`, port 3000)
+- `client/` — React 19 + Vite 7 + TypeScript SPA (`npm --prefix client run dev`, port 8000)
 - `server/` — Go 1.24 stdlib HTTP server (no framework), port 8080. Entrypoint `server/main.go`; handlers in `server/routes/v1/`
 - `migrations/` — plain SQL, mounted into Postgres at `docker-entrypoint-initdb.d`. **Only runs on first DB volume creation** — schema changes to an existing volume require manual psql
 - `bin/localstack/init-s3.sh` — creates the S3 bucket + CORS on LocalStack startup

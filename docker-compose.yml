@@ -14,7 +14,7 @@ services:
     build:
       context: client/
     ports:
-      - "3000:3000"
+      - "8000:80"
   db:
     image: postgres:15
     container_name: local-postgres
