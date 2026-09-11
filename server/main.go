@@ -9,9 +9,8 @@ import (
 	"vidtube/db"
 	v1 "vidtube/routes/v1"
 	"vidtube/storage"
+	"vidtube/uploadingest"
 )
-
-const defaultS3Endpoint = "http://localhost:4566" // LocalStack
 
 func main() {
 	ctx := context.Background()
@@ -23,17 +22,24 @@ func main() {
 	}
 	defer database.Close()
 
-	endpoint := os.Getenv("S3_ENDPOINT")
-	if endpoint == "" {
-		endpoint = defaultS3Endpoint
-	}
-	store, err := storage.New(ctx, "vidtube-videos-1", endpoint)
+	s3_endpoint := os.Getenv("S3_ENDPOINT")
+	store, err := storage.New(ctx, "vidtube-videos-1", s3_endpoint)
 	if err != nil {
 		slog.Error("failed to init s3 client", "error", err)
 		os.Exit(1)
 	}
 
+	http.HandleFunc("GET /api/v1", handleWithCors(handleAPIIndex))
 	http.HandleFunc("/api/v1/videos", handleWithCors(v1.NewVideosHandler(database, store)))
+
+	sqs_endpoint := os.Getenv("SQS_ENDPOINT")
+	go func() {
+		err := uploadingest.Run(ctx, database, "000000000000/vidtube-uploads", sqs_endpoint)
+		if err != nil {
+			slog.Error("upload event consumer failed", "error", err)
+			os.Exit(1)
+		}
+	}()
 
 	port := getPort()
 	slog.Info("Server running at http://0.0.0.0:" + port)

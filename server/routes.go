@@ -1,10 +1,21 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 )
+
+var apiIndex = map[string]string{
+	"GET /api/v1/videos":  "list ready videos (query: count, page)",
+	"POST /api/v1/videos": "create video and get presigned upload url!",
+}
+
+func handleAPIIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(apiIndex)
+}
 
 func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")

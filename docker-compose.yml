@@ -2,13 +2,15 @@ services:
   server:
     build:
       context: server/
-    ports:
-      - "8080:8080"
-    environment:
-      DB_URL: ${DB_URL}
+    network_mode: "service:aws"
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      DB_URL: ${DB_URL}
+      S3_ENDPOINT: http://localhost:4566
+      SQS_ENDPOINT: http://localhost:4566
 
   client:
     build:
@@ -24,14 +26,21 @@ services:
       POSTGRES_USER: tj
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: vidtube
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d:ro
 
-  s3:
+  aws:
     image: localstack/localstack
     ports:
       - "4566:4566"
+      - "8080:8080"
     environment:
       - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
     volumes:

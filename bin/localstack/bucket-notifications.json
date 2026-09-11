@@ -1,0 +1,16 @@
+{
+  "QueueConfigurations": [
+    {
+      "QueueArn": "arn:aws:sqs:us-east-1:000000000000:vidtube-uploads",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {"Name": "prefix", "Value": "videos/"},
+            {"Name": "suffix", "Value": ".mp4"}
+          ]
+        }
+      }
+    }
+  ]
+}

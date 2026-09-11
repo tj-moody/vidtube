@@ -11,8 +11,9 @@ import (
 )
 
 type S3Client struct {
-	client *s3.Client
-	bucket string
+	client        *s3.Client
+	presignClient *s3.PresignClient
+	bucket        string
 }
 
 func New(ctx context.Context, bucket, endpoint string) (*S3Client, error) {
@@ -32,13 +33,15 @@ func New(ctx context.Context, bucket, endpoint string) (*S3Client, error) {
 		o.UsePathStyle = true // LocalStack needs path-style, not virtual-hosted-style
 	})
 
-	return &S3Client{client: client, bucket: bucket}, nil
+	return &S3Client{
+		client:        client,
+		presignClient: s3.NewPresignClient(client),
+		bucket:        bucket,
+	}, nil
 }
 
 func (s *S3Client) GeneratePresignedUploadURL(ctx context.Context, key string, expires time.Duration) (string, error) {
-	presignClient := s3.NewPresignClient(s.client)
-
-	req, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+	req, err := s.presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
 	}, s3.WithPresignExpires(expires))

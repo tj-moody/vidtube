@@ -16,7 +16,7 @@ set -x
 
 case "$1" in
     "display")
-        docker exec -i local-postgres psql -U tj -d vidtube -c "SELECT * FROM users LIMIT 2;" -c "SELECT * FROM videos LIMIT 2;"
+        docker exec -i local-postgres psql -U tj -d vidtube -c "SELECT * FROM users LIMIT 8;" -c "SELECT * FROM videos LIMIT 8;"
         ;;
     "testdata")
         docker exec -i local-postgres psql -U tj -d vidtube < migrations/002_testdata.sql

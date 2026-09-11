@@ -27,7 +27,7 @@ type Presigner interface {
 	GeneratePresignedUploadURL(ctx context.Context, key string, expires time.Duration) (string, error)
 }
 
-// /api/v1/videos
+// GET, POST /api/v1/videos
 func NewVideosHandler(store VideoStore, presigner Presigner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -41,6 +41,7 @@ func NewVideosHandler(store VideoStore, presigner Presigner) http.HandlerFunc {
 	}
 }
 
+// POST /api/v1/videos
 func videosPostHandler(store VideoStore, presigner Presigner, w http.ResponseWriter, r *http.Request) {
 	var req VideoUploadRequest
 
@@ -73,8 +74,7 @@ func videosPostHandler(store VideoStore, presigner Presigner, w http.ResponseWri
 		return
 	}
 
-	id, err := store.UploadVideo(videoID, req.Title, req.AuthorID, s3Key)
-	if err != nil {
+	if _, err := store.UploadVideo(videoID, req.Title, req.AuthorID, s3Key); err != nil {
 		slog.Error("failed to add video", "error", err)
 		http.Error(w, "failed to add video: ", http.StatusInternalServerError)
 		return
@@ -84,11 +84,12 @@ func videosPostHandler(store VideoStore, presigner Presigner, w http.ResponseWri
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message":   "Video added successfully",
-		"id":        fmt.Sprint(id),
+		"id":        videoID.String(),
 		"uploadURL": uploadURL,
 	})
 }
 
+// GET /api/v1/videos
 func videosGetHandler(store VideoStore, w http.ResponseWriter, r *http.Request) {
 	countStr := r.URL.Query().Get("count")
 	pageStr := r.URL.Query().Get("page")

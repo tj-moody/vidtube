@@ -11,9 +11,12 @@ CREATE TABLE videos (
     public_id    UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
     title        TEXT NOT NULL,
     author_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    views BIGINT NOT NULL DEFAULT 0,
+    views        BIGINT NOT NULL DEFAULT 0,
 
     s3_key       TEXT NOT NULL UNIQUE, -- "videos/{key}/original.mp4"
     size_bytes   BIGINT,
-    duration_ms  INTEGER
+    duration_ms  INTEGER,
+
+    status       TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending', 'ready', 'failed'))
 );

@@ -59,6 +59,7 @@ func (d *Database) GetVideos(page_size int, page_number int) ([]Video, error) {
 	rows, err := d.conn.Query(
 		`SELECT videos.id, videos.public_id, videos.title, users.name, videos.views
 		FROM videos JOIN users ON videos.author_id = users.id
+		WHERE videos.status = 'ready'
 		ORDER BY videos.id DESC
 		LIMIT $1 OFFSET $2`,
 		page_size, offset,
@@ -103,6 +104,28 @@ func (d *Database) UploadVideo(publicID uuid.UUID, title string, authorID int64,
 
 	slog.Info("successfully added video", "title", title, "author_id", authorID, "id", id)
 	return id, nil
+}
+
+func (d *Database) MarkVideoReady(publicID uuid.UUID) error {
+	res, err := d.conn.Exec(
+		"UPDATE videos SET status = 'ready' WHERE public_id = $1 AND status IN ('pending', 'ready')",
+		publicID,
+	)
+	if err != nil {
+		slog.Error("failed to mark video ready", "error", err, "public_id", publicID)
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return errors.New("no pending or ready video found with id " + publicID.String())
+	}
+
+	slog.Info("marked video ready", "public_id", publicID)
+	return nil
 }
 
 func (d *Database) CreateUser(name string, email string, password string) (int64, error) {

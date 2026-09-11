@@ -13,50 +13,54 @@ const VideoUpload = ({ onVideoAdded }: VideoUploadProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     async function handleSubmit(e: React.SubmitEvent) {
-    e.preventDefault();
+        e.preventDefault();
 
-    if (!title.trim()) {
-        alert("Please enter a video title");
-        return;
-    }
-    const parsedAuthorID = Number(authorID);
-    if (!authorID.trim() || !Number.isInteger(parsedAuthorID) || parsedAuthorID <= 0) {
-        alert("Please enter a valid author ID");
-        return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-        const response = await fetch(baseUrl + "api/v1/videos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ title, authorID: parsedAuthorID }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(
-                errorData || `HTTP error! status: ${response.status}`,
-            );
+        if (!title.trim()) {
+            alert("Please enter a video title");
+            return;
+        }
+        const parsedAuthorID = Number(authorID);
+        if (
+            !authorID.trim() ||
+            !Number.isInteger(parsedAuthorID) ||
+            parsedAuthorID <= 0
+        ) {
+            alert("Please enter a valid author ID");
+            return;
         }
 
-        const data = await response.json();
-        console.log("Got presigned upload URL:", data.uploadURL);
+        setIsSubmitting(true);
 
-        alert("Video added successfully!");
-        setTitle("");
-        setAuthorID("");
-        onVideoAdded();
-    } catch (error) {
-        console.error("Error adding video:", error);
-        alert(`Failed to add video: ${error}`);
-    } finally {
-        setIsSubmitting(false);
+        try {
+            const response = await fetch(baseUrl + "api/v1/videos", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ title, authorID: parsedAuthorID }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(
+                    errorData || `HTTP error! status: ${response.status}`,
+                );
+            }
+
+            const data = await response.json();
+            console.log("Got presigned upload URL:", data.uploadURL);
+
+            alert("Video added successfully!");
+            setTitle("");
+            setAuthorID("");
+            onVideoAdded();
+        } catch (error) {
+            console.error("Error adding video:", error);
+            alert(`Failed to add video: ${error}`);
+        } finally {
+            setIsSubmitting(false);
+        }
     }
-}
 
     return (
         <div className={styles.upload_container}>
